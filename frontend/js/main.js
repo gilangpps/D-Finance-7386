@@ -8,7 +8,7 @@ class BudgetingApp {
         this.config = null;
         this.theme = null;
         this.formHandler = null;
-        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxCWiA4GcuAyhD_c4jyqgSt8jxZlCBCKd_CaueHaal44kXHCQ0kQbKemMfIMYI-asHP/exec'; // Will be provided in config or env
+        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec'; // Will be provided in config or env
     }
 
     async init() {
@@ -57,6 +57,11 @@ class BudgetingApp {
      * Priority: environment variable > localStorage > prompt user
      */
     getAppsScriptUrl() {
+        // Return the hardcoded URL if already set in the constructor
+        if (this.appsScriptUrl) {
+            return this.appsScriptUrl;
+        }
+
         // Check environment
         if (window.APPS_SCRIPT_URL) {
             return window.APPS_SCRIPT_URL;
