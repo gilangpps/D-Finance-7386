@@ -1,0 +1,356 @@
+/* ============================================
+   NANA THEME - Rose Garden & Warm Vintage
+   Feminine, elegant, soft aesthetic
+   ============================================ */
+
+.theme-nana {
+    --bg-primary: #fdf8f2;
+    --bg-secondary: #fffbf7;
+    --bg-tertiary: #f9f3eb;
+    --text-primary: #3a2e28;
+    --text-secondary: #9b8a80;
+    --border-color: #ead5c0;
+    --accent-color: #c96f6f;
+    --accent-color-dark: #b55a5a;
+    --accent-color-20: rgba(201, 111, 111, 0.20);
+    --accent-color-10: rgba(201, 111, 111, 0.10);
+
+    /* Status Colors */
+    --success-color: #7ab67a;
+    --success-bg: rgba(122, 182, 122, 0.12);
+    --success-text: #4a7a4a;
+
+    --error-color: #c96f6f;
+    --error-bg: rgba(201, 111, 111, 0.12);
+    --error-text: #8b3f3f;
+
+    --warning-color: #d4a96a;
+    --warning-bg: rgba(212, 169, 106, 0.12);
+    --warning-text: #8b6535;
+}
+
+/* ---- Body Background ---- */
+.theme-nana body,
+.theme-nana {
+    background-color: var(--bg-primary);
+}
+
+/* ---- Header ---- */
+.theme-nana .app-header {
+    background: linear-gradient(135deg, #c96f6f 0%, #d4856e 40%, #c87a8a 100%);
+    border-bottom: none;
+    box-shadow: 0 4px 24px rgba(201, 111, 111, 0.25), 0 1px 0 rgba(255,255,255,0.15) inset;
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-nana .app-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.theme-nana .app-title {
+    color: #fff;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.theme-nana .app-subtitle {
+    color: rgba(255, 255, 255, 0.75);
+    font-family: 'Caveat', cursive;
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+/* ---- App Container ---- */
+.theme-nana .app-container {
+    background: linear-gradient(180deg, #fdf8f2 0%, #faf4ee 100%);
+}
+
+/* ---- Form Card ---- */
+.theme-nana .transaction-form {
+    background: #fffbf7;
+    border: 1px solid rgba(201, 111, 111, 0.12);
+    box-shadow:
+        0 2px 0 rgba(255,255,255,0.8) inset,
+        0 24px 48px rgba(180, 100, 80, 0.08),
+        0 0 0 1px rgba(201, 111, 111, 0.05);
+    border-radius: 20px;
+}
+
+/* ---- Form Label ---- */
+.theme-nana .form-label {
+    color: #6b4e3d;
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* ---- Owner Buttons ---- */
+.theme-nana .owner-btn {
+    border: 2px solid #ead5c0;
+    background: linear-gradient(145deg, #fff8f2 0%, #fdf3eb 100%);
+    color: #9b8a80;
+    font-family: 'Caveat', cursive;
+    font-weight: 600;
+    font-size: 1.15rem;
+    border-radius: 18px;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-nana .owner-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201, 111, 111, 0.08) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.theme-nana .owner-btn:hover {
+    border-color: rgba(201, 111, 111, 0.4);
+    color: #6b4e3d;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(201, 111, 111, 0.12);
+}
+
+.theme-nana .owner-btn:hover::before {
+    opacity: 1;
+}
+
+.theme-nana .owner-btn.active {
+    background: linear-gradient(135deg, #c96f6f 0%, #d4856e 100%);
+    border-color: #c96f6f;
+    color: #ffffff;
+    box-shadow:
+        0 0 0 3px rgba(201, 111, 111, 0.2),
+        0 12px 32px rgba(201, 111, 111, 0.3),
+        0 0 60px rgba(201, 111, 111, 0.1);
+    transform: translateY(-2px) scale(1.02);
+}
+
+.theme-nana .owner-btn.active::before {
+    opacity: 1;
+}
+
+.theme-nana .owner-btn.active .owner-icon {
+    animation: ownerPulse 2s ease-in-out infinite;
+}
+
+/* ---- Form Inputs ---- */
+.theme-nana .form-input,
+.theme-nana .form-select,
+.theme-nana .form-textarea {
+    background-color: #fffbf7;
+    border: 1px solid #ead5c0;
+    color: #3a2e28;
+    font-family: 'Caveat', cursive;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
+}
+
+.theme-nana .form-input:focus,
+.theme-nana .form-select:focus,
+.theme-nana .form-textarea:focus {
+    border-color: #c96f6f;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(201, 111, 111, 0.12), 0 2px 12px rgba(201, 111, 111, 0.06);
+}
+
+.theme-nana .form-input::placeholder,
+.theme-nana .form-textarea::placeholder {
+    color: #c4b0a8;
+    font-family: 'Caveat', cursive;
+}
+
+/* ---- Select arrow tint ---- */
+.theme-nana .form-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c96f6f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.theme-nana .form-select option {
+    background-color: #fffbf7;
+    color: #3a2e28;
+    font-family: sans-serif;
+}
+
+/* ---- Amount Input ---- */
+.theme-nana .currency-prefix {
+    color: #c96f6f;
+    font-weight: 700;
+    font-family: 'Caveat', cursive;
+}
+
+.theme-nana .amount-input {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #c96f6f;
+}
+
+/* ---- Image Upload Area ---- */
+.theme-nana .image-upload-area {
+    border-color: #ead5c0;
+    background-color: #fdf8f2;
+}
+
+.theme-nana .image-upload-area:hover {
+    border-color: rgba(201, 111, 111, 0.4);
+    background-color: rgba(201, 111, 111, 0.04);
+}
+
+.theme-nana .image-upload-area.drag-over {
+    border-color: #c96f6f;
+    background-color: rgba(201, 111, 111, 0.06);
+    box-shadow: 0 0 20px rgba(201, 111, 111, 0.1);
+}
+
+.theme-nana .upload-prompt {
+    color: #c4b0a8;
+    font-family: 'Caveat', cursive;
+}
+
+/* ---- Submit Button ---- */
+.theme-nana .btn-primary {
+    background: linear-gradient(135deg, #c96f6f 0%, #d4856e 100%);
+    color: #ffffff;
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.03em;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(201, 111, 111, 0.28);
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-nana .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.theme-nana .btn-primary:hover {
+    background: linear-gradient(135deg, #d4856e 0%, #c96f6f 100%);
+    box-shadow: 0 8px 28px rgba(201, 111, 111, 0.35);
+    transform: translateY(-1px);
+}
+
+.theme-nana .btn-primary:hover::after {
+    left: 100%;
+}
+
+.theme-nana .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(201, 111, 111, 0.2);
+}
+
+/* ---- Theme Switcher ---- */
+.theme-nana .theme-switcher {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+}
+
+.theme-nana .theme-switcher:hover {
+    background-color: rgba(255, 255, 255, 0.28);
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+.theme-nana .theme-indicator {
+    background: radial-gradient(circle, #fff, #ffd6d6);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+}
+
+/* ---- Feedback messages ---- */
+.theme-nana .form-feedback {
+    font-family: 'Caveat', cursive;
+    font-weight: 600;
+    font-size: 1.05rem;
+    border-radius: 10px;
+}
+
+/* ---- Quick Stats ---- */
+.theme-nana .quick-stats {
+    background: #fffbf7;
+    border: 1px solid rgba(201, 111, 111, 0.1);
+    box-shadow: 0 12px 32px rgba(180, 100, 80, 0.07);
+    border-radius: 20px;
+}
+
+.theme-nana .stats-title {
+    color: #3a2e28;
+    font-family: 'Playfair Display', serif;
+}
+
+.theme-nana .stat-item {
+    background: linear-gradient(145deg, #fdf8f2 0%, #faf3eb 100%);
+    border: 1px solid rgba(201, 111, 111, 0.08);
+}
+
+.theme-nana .stat-label {
+    color: #9b8a80;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+}
+
+.theme-nana .stat-value {
+    color: #c96f6f;
+    font-family: 'Caveat', cursive;
+    font-size: 1.2rem;
+}
+
+/* ---- Footer ---- */
+.theme-nana .app-footer {
+    background-color: #faf4ee;
+    border-top: 1px solid #ead5c0;
+    color: #c4b0a8;
+    font-family: 'Caveat', cursive;
+}
+
+/* ---- Misc ---- */
+.theme-nana .optional-badge {
+    color: #c4b0a8;
+    font-family: 'Caveat', cursive;
+    font-size: 0.9rem;
+    background: rgba(201, 111, 111, 0.06);
+    border: 1px solid rgba(201, 111, 111, 0.12);
+    border-radius: 4px;
+    padding: 1px 8px;
+}
+
+.theme-nana .form-hint {
+    color: #c4b0a8;
+    font-family: 'Caveat', cursive;
+}
+
+.theme-nana .form-loading {
+    background-color: rgba(255, 251, 247, 0.95);
+    color: #3a2e28;
+    font-family: 'Caveat', cursive;
+    backdrop-filter: blur(8px);
+}
+
+.theme-nana .spinner {
+    border-color: rgba(201, 111, 111, 0.15);
+    border-top-color: #c96f6f;
+    box-shadow: 0 0 16px rgba(201, 111, 111, 0.15);
+}

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budgeting | 7386</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/theme-tama.css">
+    <link rel="stylesheet" href="css/theme-nana.css">
+</head>
+<body class="theme-tama">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">D'Finance | 7386</h1>
+                <p class="app-subtitle">Our more serious financial plan for more uplifting tale.</p>
+            </div>
+            <button class="theme-switcher" id="themeSwitcher" title="Ganti tema">
+                <span class="theme-indicator"></span>
+                <span class="theme-label" id="themeLabel">Tama</span>
+            </button>
+        </header>
+
+        <!-- Main Form -->
+        <main class="app-main">
+            <form class="transaction-form" id="transactionForm">
+                <!-- Owner Selection -->
+                <div class="form-group form-group--owner">
+                    <label class="form-label">Siapa?</label>
+                    <p class="owner-hint">Pilih pemilik — tema berubah otomatis ✨</p>
+                    <div class="owner-selector">
+                        <button type="button" class="owner-btn" data-owner="Tama" id="ownerBtnTama">
+                            <span class="owner-icon">💼</span>
+                            <span class="owner-name">Tama</span>
+                            <span class="owner-theme-tag">Graphite</span>
+                        </button>
+                        <button type="button" class="owner-btn" data-owner="Nana" id="ownerBtnNana">
+                            <span class="owner-icon">✨</span>
+                            <span class="owner-name">Nana</span>
+                            <span class="owner-theme-tag">Rose Garden</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="owner" id="ownerInput" required>
+                </div>
+
+                <!-- Date -->
+                <div class="form-group">
+                    <label for="dateInput" class="form-label">Tanggal</label>
+                    <input 
+                        type="date" 
+                        id="dateInput" 
+                        name="date" 
+                        class="form-input" 
+                        required
+                    >
+                </div>
+
+                <!-- Transaction Type -->
+                <div class="form-group">
+                    <label for="typeSelect" class="form-label">Jenis Transaksi</label>
+                    <select 
+                        id="typeSelect" 
+                        name="type" 
+                        class="form-input form-select" 
+                        required
+                    >
+                        <option value="">-- Pilih Jenis --</option>
+                    </select>
+                </div>
+
+                <!-- Category (Dynamic) -->
+                <div class="form-group">
+                    <label for="categorySelect" class="form-label">Kategori</label>
+                    <select 
+                        id="categorySelect" 
+                        name="category" 
+                        class="form-input form-select" 
+                        required
+                    >
+                        <option value="">-- Pilih Kategori --</option>
+                    </select>
+                </div>
+
+                <!-- Detail/Description -->
+                <div class="form-group">
+                    <label for="detailInput" class="form-label">Detail Transaksi</label>
+                    <input 
+                        type="text" 
+                        id="detailInput" 
+                        name="detail" 
+                        class="form-input" 
+                        placeholder="Contoh: Makan siang di kedai"
+                        required
+                    >
+                </div>
+
+                <!-- Amount -->
+                <div class="form-group">
+                    <label for="amountInput" class="form-label">Nominal (Rp)</label>
+                    <div class="amount-input-wrapper">
+                        <span class="currency-prefix">Rp</span>
+                        <input 
+                            type="number" 
+                            id="amountInput" 
+                            name="amount" 
+                            class="form-input amount-input" 
+                            placeholder="0" 
+                            min="1000"
+                            max="999999999"
+                            required
+                        >
+                    </div>
+                    <small class="form-hint" id="amountHint"></small>
+                </div>
+
+                <!-- Note (Optional) -->
+                <div class="form-group">
+                    <label for="noteInput" class="form-label">Catatan <span class="optional-badge">Opsional</span></label>
+                    <textarea 
+                        id="noteInput" 
+                        name="note" 
+                        class="form-input form-textarea" 
+                        placeholder="Tambahkan catatan jika perlu..."
+                        rows="3"
+                    ></textarea>
+                </div>
+
+                <!-- Image Upload (Optional) -->
+                <div class="form-group">
+                    <label class="form-label">Lampiran Gambar <span class="optional-badge">Opsional</span></label>
+                    <div class="image-upload-area" id="imageUploadArea">
+                        <input 
+                            type="file" 
+                            id="imageInput" 
+                            name="image" 
+                            class="image-input" 
+                            accept="image/*"
+                        >
+                        <div class="upload-prompt">
+                            <span class="upload-icon">📸</span>
+                            <p>Klik atau drag gambar ke sini</p>
+                            <small>JPG, PNG, WebP max 5MB</small>
+                        </div>
+                    </div>
+                    <div class="image-preview" id="imagePreview" style="display: none;">
+                        <img id="previewImage" alt="Preview">
+                        <button type="button" class="btn-remove-image" id="removeImageBtn">✕</button>
+                    </div>
+                </div>
+
+                <!-- Form Status/Feedback -->
+                <div class="form-feedback" id="formFeedback" style="display: none;"></div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary btn-submit" id="submitBtn">
+                    <span class="btn-text">Simpan Transaksi</span>
+                    <span class="btn-loader" style="display: none;">⏳</span>
+                </button>
+
+                <!-- Loading Overlay -->
+                <div class="form-loading" id="formLoading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Mengirim data...</p>
+                </div>
+            </form>
+
+            <!-- Quick Stats -->
+            <aside class="quick-stats" id="quickStats" style="display: none;">
+                <h3 class="stats-title">Statistik Hari Ini</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Pemasukan</span>
+                        <span class="stat-value stat-income">Rp 0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Pengeluaran</span>
+                        <span class="stat-value stat-expense">Rp 0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Saldo Bersih</span>
+                        <span class="stat-value stat-net">Rp 0</span>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p class="footer-text">Our tale, ich liebe dich</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config-loader.js"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/form-handler.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

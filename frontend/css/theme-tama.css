@@ -1,0 +1,332 @@
+/* ============================================
+   TAMA THEME - Deep Graphite & Midnight
+   Modern, sharp, dark executive aesthetic
+   ============================================ */
+
+.theme-tama {
+    --bg-primary: #0f1117;
+    --bg-secondary: #1a1d27;
+    --bg-tertiary: #12151f;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b919e;
+    --border-color: #2a2f3e;
+    --accent-color: #070438;
+    --accent-color-dark: #020217;
+    --accent-color-20: rgba(20, 18, 90, 0.2);
+    --accent-color-10: rgba(20, 18, 90, 0.1);
+
+    /* Status Colors */
+    --success-color: #22c55e;
+    --success-bg: rgba(34, 197, 94, 0.12);
+    --success-text: #86efac;
+
+    --error-color: #f87171;
+    --error-bg: rgba(248, 113, 113, 0.12);
+    --error-text: #fca5a5;
+
+    --warning-color: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.12);
+    --warning-text: #fcd34d;
+}
+
+/* ---- Body Background ---- */
+.theme-tama body,
+.theme-tama {
+    background-color: var(--bg-primary);
+}
+
+/* ---- Header ---- */
+.theme-tama .app-header {
+    background: linear-gradient(135deg, #07090f 0%, #1e2235 50%, #151a2c 100%);
+    border-bottom: 1px solid rgba(13, 14, 85, 0.15);
+    box-shadow: 0 1px 0 rgba(13, 14, 85, 0.08), 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.theme-tama .app-title {
+    color: #e8eaf0;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #ffffff 0%, #b0c4f5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.theme-tama .app-subtitle {
+    color: #5b8af5;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* ---- App Container ---- */
+.theme-tama .app-container {
+    background-color: var(--bg-primary);
+}
+
+/* ---- Form Card ---- */
+.theme-tama .transaction-form {
+    background: linear-gradient(160deg, #1a1d27 0%, #151929 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(91, 138, 245, 0.05);
+}
+
+/* ---- Form Label ---- */
+.theme-tama .form-label {
+    color: #c8cdd8;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ---- Owner Buttons ---- */
+.theme-tama .owner-btn {
+    border: 2px solid rgba(255, 255, 255, 0.07);
+    background: linear-gradient(145deg, #1e2235 0%, #181c2c 100%);
+    color: #8b919e;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-tama .owner-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(91, 138, 245, 0.1) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.theme-tama .owner-btn:hover {
+    border-color: rgba(91, 138, 245, 0.4);
+    color: #c8cdd8;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(91, 138, 245, 0.15);
+}
+
+.theme-tama .owner-btn:hover::before {
+    opacity: 1;
+}
+
+.theme-tama .owner-btn.active {
+    background: linear-gradient(135deg, #2a3a6e 0%, #1e2d5c 100%);
+    border-color: #5b8af5;
+    color: #ffffff;
+    box-shadow:
+        0 0 0 3px rgba(91, 138, 245, 0.2),
+        0 12px 32px rgba(91, 138, 245, 0.3),
+        0 0 60px rgba(91, 138, 245, 0.1);
+    transform: translateY(-2px) scale(1.02);
+}
+
+.theme-tama .owner-btn.active::before {
+    opacity: 1;
+}
+
+.theme-tama .owner-btn.active .owner-icon {
+    animation: ownerPulse 2s ease-in-out infinite;
+}
+
+/* ---- Form Inputs ---- */
+.theme-tama .form-input,
+.theme-tama .form-select,
+.theme-tama .form-textarea {
+    background-color: #12151f;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e8eaf0;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.25s ease;
+}
+
+.theme-tama .form-input:focus,
+.theme-tama .form-select:focus,
+.theme-tama .form-textarea:focus {
+    border-color: #5b8af5;
+    background-color: #141827;
+    box-shadow: 0 0 0 3px rgba(91, 138, 245, 0.15), 0 0 20px rgba(91, 138, 245, 0.08);
+}
+
+.theme-tama .form-input::placeholder,
+.theme-tama .form-textarea::placeholder {
+    color: #404656;
+}
+
+/* ---- Select arrow tint ---- */
+.theme-tama .form-select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b8af5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.theme-tama .form-select option {
+    background-color: #1a1d27;
+    color: #e8eaf0;
+}
+
+/* ---- Amount Input ---- */
+.theme-tama .currency-prefix {
+    color: #5b8af5;
+    font-weight: 700;
+}
+
+.theme-tama .amount-input {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #e8eaf0;
+}
+
+/* ---- Image Upload Area ---- */
+.theme-tama .image-upload-area {
+    border-color: rgba(255, 255, 255, 0.06);
+    background-color: #12151f;
+}
+
+.theme-tama .image-upload-area:hover {
+    border-color: rgba(91, 138, 245, 0.4);
+    background-color: rgba(91, 138, 245, 0.05);
+}
+
+.theme-tama .image-upload-area.drag-over {
+    border-color: #5b8af5;
+    background-color: rgba(91, 138, 245, 0.08);
+    box-shadow: 0 0 20px rgba(91, 138, 245, 0.12);
+}
+
+.theme-tama .upload-prompt {
+    color: #404656;
+}
+
+/* ---- Submit Button ---- */
+.theme-tama .btn-primary {
+    background: linear-gradient(135deg, #4b7ae8 0%, #2d57c8 100%);
+    color: #ffffff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(91, 138, 245, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-tama .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.5s ease;
+}
+
+.theme-tama .btn-primary:hover {
+    background: linear-gradient(135deg, #5b8af5 0%, #3d6de0 100%);
+    box-shadow: 0 8px 28px rgba(91, 138, 245, 0.35);
+    transform: translateY(-1px);
+}
+
+.theme-tama .btn-primary:hover::after {
+    left: 100%;
+}
+
+.theme-tama .btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(91, 138, 245, 0.2);
+}
+
+/* ---- Theme Switcher ---- */
+.theme-tama .theme-switcher {
+    background-color: rgba(91, 138, 245, 0.1);
+    border: 1px solid rgba(91, 138, 245, 0.2);
+    color: #b0c4f5;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.8rem;
+}
+
+.theme-tama .theme-switcher:hover {
+    background-color: rgba(91, 138, 245, 0.18);
+    border-color: rgba(91, 138, 245, 0.35);
+    color: #ffffff;
+}
+
+.theme-tama .theme-indicator {
+    background: radial-gradient(circle, #5b8af5, #3d6de0);
+    box-shadow: 0 0 8px rgba(91, 138, 245, 0.6);
+}
+
+/* ---- Feedback messages ---- */
+.theme-tama .form-feedback {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    border-radius: 10px;
+}
+
+/* ---- Quick Stats ---- */
+.theme-tama .quick-stats {
+    background: linear-gradient(160deg, #1a1d27 0%, #151929 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.theme-tama .stats-title {
+    color: #e8eaf0;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.theme-tama .stat-item {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.theme-tama .stat-label {
+    color: #5b6478;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.theme-tama .stat-value {
+    color: #e8eaf0;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ---- Footer ---- */
+.theme-tama .app-footer {
+    background-color: #12151f;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: #404656;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ---- Misc ---- */
+.theme-tama .optional-badge {
+    color: #404656;
+    font-family: 'Space Grotesk', sans-serif;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 1px 8px;
+}
+
+.theme-tama .form-hint {
+    color: #404656;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.theme-tama .form-loading {
+    background-color: rgba(26, 29, 39, 0.95);
+    color: #e8eaf0;
+    font-family: 'Space Grotesk', sans-serif;
+    backdrop-filter: blur(8px);
+}
+
+.theme-tama .spinner {
+    border-color: rgba(91, 138, 245, 0.15);
+    border-top-color: #5b8af5;
+    box-shadow: 0 0 16px rgba(91, 138, 245, 0.2);
+}
