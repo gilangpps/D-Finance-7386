@@ -61,6 +61,11 @@ class FormHandler {
             }
         });
 
+        // Click to open file dialog
+        uploadArea.addEventListener('click', () => {
+            document.getElementById('imageInput').click();
+        });
+
         // Remove image button
         document.getElementById('removeImageBtn').addEventListener('click', () => {
             this.removeImage();
