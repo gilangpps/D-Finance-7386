@@ -8,6 +8,7 @@ class BudgetingApp {
         this.config = null;
         this.theme = null;
         this.formHandler = null;
+        this.stats = null;
         this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec'; // Will be provided in config or env
     }
 
@@ -35,6 +36,8 @@ class BudgetingApp {
             if (this.appsScriptUrl) {
                 this.formHandler.setAppsScriptUrl(this.appsScriptUrl);
                 console.log('✓ Apps Script URL configured');
+                // Fetch stats asynchronously
+                this.fetchStats();
             } else {
                 console.warn('⚠ Apps Script URL not configured');
             }
@@ -105,6 +108,26 @@ class BudgetingApp {
         feedback.className = 'form-feedback error';
         feedback.textContent = '❌ ' + message;
         feedback.style.display = 'block';
+    }
+
+    /**
+     * Fetch stats for the minimum dashboard
+     */
+    async fetchStats() {
+        if (!this.appsScriptUrl) return;
+        try {
+            const response = await fetch(`${this.appsScriptUrl}?action=getStats`);
+            const result = await response.json();
+            if (result.success && result.stats) {
+                this.stats = result.stats;
+                console.log('✓ Stats loaded');
+                if (this.formHandler && this.formHandler.selectedOwner) {
+                    this.formHandler.updateStatsUI(this.formHandler.selectedOwner);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch stats:', error);
+        }
     }
 }
 

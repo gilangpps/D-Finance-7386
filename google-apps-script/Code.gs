@@ -104,9 +104,20 @@ function doPost(e) {
     
     Logger.log('Transaction saved successfully: ' + transaction.entry_id);
     
+    // Rebuild dashboard
+    try {
+      rebuildDashboard();
+    } catch (dashError) {
+      Logger.log('Error rebuilding dashboard: ' + dashError);
+    }
+    
+    // Fetch updated stats
+    const updatedStats = getCurrentMonthStats();
+    
     return jsonResponse(true, 'Transaction saved', 200, {
       entry_id: transaction.entry_id,
-      timestamp: transaction.timestamp
+      timestamp: transaction.timestamp,
+      stats: updatedStats
     });
     
   } catch (error) {
@@ -128,6 +139,16 @@ function doGet(e) {
         .createTextOutput(JSON.stringify({
           success: true,
           config: config
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    if (action === 'getStats') {
+      const stats = getCurrentMonthStats();
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          stats: stats
         }))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -238,8 +259,18 @@ function getOwnerSheet(owner) {
 /**
  * Upload image to Google Drive
  */
-function uploadImage(imageBlob, owner, monthKey, entryId) {
+function uploadImage(imageBase64, owner, monthKey, entryId) {
   try {
+    // Parse base64 string
+    const match = imageBase64.match(/^data:(image\/[a-zA-Z]+);base64,(.*)$/);
+    if (!match) {
+      throw new Error('Invalid image format');
+    }
+    
+    const mimeType = match[1];
+    const base64Data = match[2];
+    const extension = mimeType.split('/')[1] || 'jpg';
+    
     // Get or create folder structure
     const driveFolders = getOrCreateDriveFolders();
     const ownerFolderId = driveFolders[owner];
@@ -252,11 +283,12 @@ function uploadImage(imageBlob, owner, monthKey, entryId) {
     const monthFolderId = getOrCreateMonthFolder(ownerFolderId, monthKey);
     
     // Create filename
-    const filename = `${monthKey}_${owner}_${entryId}.jpg`;
+    const filename = `${monthKey}_${owner}_${entryId}.${extension}`;
     
     // Upload file
     const folder = DriveApp.getFolderById(monthFolderId);
-    const file = folder.createFile(imageBlob);
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, filename);
+    const file = folder.createFile(blob);
     file.setName(filename);
     
     // Get shareable link
@@ -580,4 +612,184 @@ function updateRowStatus(owner, entryId, newStatus) {
     Logger.log('updateRowStatus error: ' + error);
     return false;
   }
+}
+
+// ============================================
+// DASHBOARD & STATS GENERATION
+// ============================================
+
+/**
+ * Calculate current month's stats for Tama and Nana
+ */
+function getCurrentMonthStats() {
+  const currentMonthKey = getMonthKey(new Date().toISOString().split('T')[0]);
+  const stats = {
+    Tama: { income: 0, expense: 0, investment: 0 },
+    Nana: { income: 0, expense: 0, investment: 0 }
+  };
+  
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ['Tama', 'Nana'].forEach(owner => {
+    const sheet = ss.getSheetByName(SHEET_NAMES[owner.toUpperCase()]);
+    if (sheet && sheet.getLastRow() > 1) {
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+      data.forEach(row => {
+        // month_key is col C (index 2), type is col D (index 3), amount is col G (index 6)
+        if (row[2] === currentMonthKey) {
+          const type = (row[3] || '').toString().toLowerCase();
+          const amount = parseFloat(row[6]) || 0;
+          if (type === 'pemasukan') stats[owner].income += amount;
+          else if (type === 'pengeluaran') stats[owner].expense += amount;
+          else if (type === 'investasi') stats[owner].investment += amount;
+        }
+      });
+    }
+  });
+  
+  return stats;
+}
+
+/**
+ * Rebuild Dashboard sheet with fresh data
+ */
+function rebuildDashboard() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let dashSheet = ss.getSheetByName(SHEET_NAMES.DASHBOARD);
+  
+  if (!dashSheet) {
+    dashSheet = ss.insertSheet(SHEET_NAMES.DASHBOARD);
+  } else {
+    dashSheet.clear(); // Clear all formatting and contents
+  }
+  
+  const allData = [];
+  ['Tama', 'Nana'].forEach(owner => {
+    const sheet = ss.getSheetByName(SHEET_NAMES[owner.toUpperCase()]);
+    if (sheet && sheet.getLastRow() > 1) {
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+      data.forEach(row => {
+        // [timestamp, date, month_key, type, category, detail, amount, note, image_url, entry_id, sync_status]
+        allData.push({
+          owner: owner,
+          timestamp: row[0],
+          date: row[1],
+          monthKey: row[2],
+          type: (row[3] || '').toString().toLowerCase(),
+          category: row[4],
+          detail: row[5],
+          amount: parseFloat(row[6]) || 0,
+          imageUrl: row[8]
+        });
+      });
+    }
+  });
+  
+  // Sort all data by timestamp descending
+  allData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  // Aggregate data
+  const ownerSummary = {
+    Tama: { income: 0, expense: 0, investment: 0, count: 0 },
+    Nana: { income: 0, expense: 0, investment: 0, count: 0 }
+  };
+  
+  const categorySummary = {};
+  const monthSummary = {};
+  
+  allData.forEach(tx => {
+    // Owner Summary
+    ownerSummary[tx.owner].count++;
+    if (tx.type === 'pemasukan') ownerSummary[tx.owner].income += tx.amount;
+    else if (tx.type === 'pengeluaran') ownerSummary[tx.owner].expense += tx.amount;
+    else if (tx.type === 'investasi') ownerSummary[tx.owner].investment += tx.amount;
+    
+    // Category Summary
+    const catKey = `${tx.owner}|${tx.type}|${tx.category}`;
+    if (!categorySummary[catKey]) categorySummary[catKey] = { owner: tx.owner, type: tx.type, category: tx.category, amount: 0 };
+    categorySummary[catKey].amount += tx.amount;
+    
+    // Month Summary
+    const monthKey = `${tx.monthKey}|${tx.owner}|${tx.type}`;
+    if (!monthSummary[monthKey]) monthSummary[monthKey] = { month: tx.monthKey, owner: tx.owner, type: tx.type, amount: 0 };
+    monthSummary[monthKey].amount += tx.amount;
+  });
+  
+  let currentRow = 1;
+  
+  // Title
+  dashSheet.getRange(currentRow, 1).setValue("D'FINANCE 7386 - DASHBOARD").setFontWeight("bold").setFontSize(14);
+  dashSheet.getRange(currentRow + 1, 1).setValue(`Last Updated: ${new Date().toLocaleString('id-ID')}`);
+  currentRow += 3;
+  
+  // 1. OWNER SUMMARY
+  dashSheet.getRange(currentRow, 1).setValue("OWNER SUMMARY").setFontWeight("bold");
+  currentRow++;
+  const ownerHeaders = ["Owner", "Total Income", "Total Expense", "Total Investment", "Transaction Count"];
+  dashSheet.getRange(currentRow, 1, 1, ownerHeaders.length).setValues([ownerHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  currentRow++;
+  
+  const ownerRows = [
+    ["Tama", ownerSummary.Tama.income, ownerSummary.Tama.expense, ownerSummary.Tama.investment, ownerSummary.Tama.count],
+    ["Nana", ownerSummary.Nana.income, ownerSummary.Nana.expense, ownerSummary.Nana.investment, ownerSummary.Nana.count]
+  ];
+  dashSheet.getRange(currentRow, 1, ownerRows.length, ownerRows[0].length).setValues(ownerRows);
+  dashSheet.getRange(currentRow, 2, ownerRows.length, 3).setNumberFormat('Rp #,##0');
+  currentRow += ownerRows.length + 2;
+  
+  // 2. CATEGORY BREAKDOWN
+  dashSheet.getRange(currentRow, 1).setValue("CATEGORY BREAKDOWN").setFontWeight("bold");
+  currentRow++;
+  const catHeaders = ["Owner", "Type", "Category", "Total Amount"];
+  dashSheet.getRange(currentRow, 1, 1, catHeaders.length).setValues([catHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  currentRow++;
+  
+  const catRows = Object.values(categorySummary)
+    .sort((a, b) => a.owner.localeCompare(b.owner) || a.type.localeCompare(b.type) || b.amount - a.amount)
+    .map(c => [c.owner, c.type, c.category, c.amount]);
+  
+  if (catRows.length > 0) {
+    dashSheet.getRange(currentRow, 1, catRows.length, catRows[0].length).setValues(catRows);
+    dashSheet.getRange(currentRow, 4, catRows.length, 1).setNumberFormat('Rp #,##0');
+    currentRow += catRows.length;
+  }
+  currentRow += 2;
+  
+  // 3. MONTHLY TRENDS
+  dashSheet.getRange(currentRow, 1).setValue("MONTHLY TRENDS").setFontWeight("bold");
+  currentRow++;
+  const monthHeaders = ["Month", "Owner", "Type", "Total Amount"];
+  dashSheet.getRange(currentRow, 1, 1, monthHeaders.length).setValues([monthHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  currentRow++;
+  
+  const monthRows = Object.values(monthSummary)
+    .sort((a, b) => b.month.localeCompare(a.month) || a.owner.localeCompare(b.owner) || a.type.localeCompare(b.type))
+    .map(m => [m.month, m.owner, m.type, m.amount]);
+    
+  if (monthRows.length > 0) {
+    dashSheet.getRange(currentRow, 1, monthRows.length, monthRows[0].length).setValues(monthRows);
+    dashSheet.getRange(currentRow, 4, monthRows.length, 1).setNumberFormat('Rp #,##0');
+    currentRow += monthRows.length;
+  }
+  currentRow += 2;
+  
+  // 4. RECENT TRANSACTIONS (Top 20)
+  dashSheet.getRange(currentRow, 1).setValue("RECENT TRANSACTIONS").setFontWeight("bold");
+  currentRow++;
+  const recentHeaders = ["Timestamp", "Owner", "Type", "Category", "Detail", "Amount", "Image URL"];
+  dashSheet.getRange(currentRow, 1, 1, recentHeaders.length).setValues([recentHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  currentRow++;
+  
+  const recentRows = allData.slice(0, 20).map(tx => [
+    tx.timestamp, tx.owner, tx.type, tx.category, tx.detail, tx.amount, tx.imageUrl
+  ]);
+  
+  if (recentRows.length > 0) {
+    dashSheet.getRange(currentRow, 1, recentRows.length, recentRows[0].length).setValues(recentRows);
+    dashSheet.getRange(currentRow, 6, recentRows.length, 1).setNumberFormat('Rp #,##0');
+  }
+  
+  // Auto-resize columns
+  dashSheet.autoResizeColumns(1, 7);
+  
+  Logger.log("Dashboard rebuilt successfully.");
 }

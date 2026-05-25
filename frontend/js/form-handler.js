@@ -10,6 +10,7 @@ class FormHandler {
         this.theme = themeManager;
         this.selectedOwner = null;
         this.selectedImage = null;
+        this.selectedImageBase64 = null;
         this.appsScriptUrl = null; // Will be set during initialization
         this.init();
     }
@@ -126,6 +127,21 @@ class FormHandler {
         if (this.theme && this.theme.setThemeByOwner) {
             this.theme.setThemeByOwner(owner);
         }
+
+        // Update stats UI
+        this.updateStatsUI(owner);
+    }
+
+    updateStatsUI(owner) {
+        if (window.app && window.app.stats && window.app.stats[owner]) {
+            const stats = window.app.stats[owner];
+            document.getElementById('statIncome').textContent = `Rp ${this.config.formatCurrency(stats.income)}`;
+            document.getElementById('statExpense').textContent = `Rp ${this.config.formatCurrency(stats.expense)}`;
+            document.getElementById('statInvestment').textContent = `Rp ${this.config.formatCurrency(stats.investment)}`;
+            document.getElementById('quickStats').style.display = 'block';
+        } else {
+            document.getElementById('quickStats').style.display = 'none';
+        }
     }
 
     validateAmount(value) {
@@ -179,7 +195,8 @@ class FormHandler {
         reader.onload = (e) => {
             const preview = document.getElementById('imagePreview');
             const previewImage = document.getElementById('previewImage');
-            previewImage.src = e.target.result;
+            this.selectedImageBase64 = e.target.result;
+            previewImage.src = this.selectedImageBase64;
             preview.style.display = 'block';
             document.getElementById('imageUploadArea').style.display = 'none';
         };
@@ -188,6 +205,7 @@ class FormHandler {
 
     removeImage() {
         this.selectedImage = null;
+        this.selectedImageBase64 = null;
         document.getElementById('imageInput').value = '';
         document.getElementById('imagePreview').style.display = 'none';
         document.getElementById('imageUploadArea').style.display = 'block';
@@ -255,8 +273,8 @@ class FormHandler {
             formData.append('note', note);
 
             // Add image if selected
-            if (this.selectedImage) {
-                formData.append('image', this.selectedImage);
+            if (this.selectedImageBase64) {
+                formData.append('image', this.selectedImageBase64);
             }
 
             // Send to Apps Script
@@ -269,6 +287,9 @@ class FormHandler {
 
             if (result.success) {
                 this.showFeedback('✓ Transaksi berhasil disimpan!', 'success');
+                if (result.data && result.data.stats) {
+                    window.app.stats = result.data.stats;
+                }
                 this.resetForm();
             } else {
                 this.showFeedback(`✗ Gagal: ${result.error}`, 'error');
@@ -286,6 +307,7 @@ class FormHandler {
         this.form.reset();
         this.selectedOwner = null;
         this.selectedImage = null;
+        this.selectedImageBase64 = null;
         this.removeImage();
         this.setDefaultDate();
         
@@ -296,6 +318,7 @@ class FormHandler {
         document.getElementById('ownerInput').value = '';
         document.getElementById('typeSelect').value = '';
         document.getElementById('categorySelect').innerHTML = '<option value="">-- Pilih Kategori --</option>';
+        document.getElementById('quickStats').style.display = 'none';
     }
 
     showFeedback(message, type) {
