@@ -6,7 +6,8 @@
     <title>Dashboard Minimum - D'Finance 7386</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/theme-tama.css">
+    <link rel="stylesheet" href="css/theme-nana.css">
 </head>
 <body class="theme-tama">
     <div class="app-container">
@@ -21,10 +22,8 @@
                 </div>
             </div>
         </header>
-
-        <main class="app-main" style="flex-direction: column; align-items: center;">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h2 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-primary);">Pilih Pemilik</h2>
+        <main class="app-main" style="flex-direction: column; align-items: center; padding-top: 1rem;">
+            <div style="text-align: center; margin-bottom: 2rem; width: 100%;">
                 <div class="owner-selector" style="display: flex; gap: 1rem; justify-content: center; max-width: 400px; margin: 0 auto;">
                     <button class="owner-btn active" id="btnTama" onclick="selectOwner('Tama')">
                         <span class="owner-icon">👨🏻</span>
@@ -38,7 +37,8 @@
             </div>
 
             <div class="quick-stats" id="dashboardStats" style="width: 100%; max-width: 600px; position: static;">
-                <h3 class="stats-title" style="text-align: center; font-size: 1.5rem; margin-bottom: 1.5rem;" id="dashboardOwnerTitle">Total Keseluruhan (Tama)</h3>
+                <h3 class="stats-title" style="text-align: center; font-size: 1.5rem; margin-bottom: 0.5rem;" id="dashboardOwnerTitle">Dashboard (Tama)</h3>
+                <p style="text-align: center; margin-bottom: 1.5rem; color: var(--text-secondary);" id="dashboardMonth">Bulan Berjalan</p>
                 <div class="stats-grid">
                     <div class="stat-item" style="padding: 1.5rem;">
                         <span class="stat-label">Total Pemasukan</span>
@@ -60,17 +60,14 @@
         </footer>
     </div>
 
-    <script src="js/config-loader.js"></script>
     <script>
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec';
         let allStats = null;
         let currentOwner = 'Tama';
 
         async function fetchDashboardStats() {
             try {
-                const configLoader = new ConfigLoader();
-                await configLoader.load();
-                
-                const response = await fetch(`${configLoader.config.appsScriptUrl}?action=getStats`);
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=getStats`);
                 const data = await response.json();
                 
                 if (data.success && data.stats) {
@@ -96,7 +93,10 @@
 
         function selectOwner(owner) {
             currentOwner = owner;
-            document.body.className = `theme-${owner.toLowerCase()}`;
+            
+            // Set theme to match main page
+            const theme = owner === 'Tama' ? 'theme-tama' : 'theme-nana';
+            document.body.className = theme;
             
             document.getElementById('btnTama').classList.toggle('active', owner === 'Tama');
             document.getElementById('btnNana').classList.toggle('active', owner === 'Nana');
@@ -105,7 +105,11 @@
         }
 
         function renderStats() {
-            document.getElementById('dashboardOwnerTitle').textContent = `Total Keseluruhan (${currentOwner})`;
+            document.getElementById('dashboardOwnerTitle').textContent = `Dashboard (${currentOwner})`;
+            
+            const date = new Date();
+            const monthName = date.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+            document.getElementById('dashboardMonth').textContent = `Periode: ${monthName}`;
             
             if (allStats && allStats[currentOwner]) {
                 const s = allStats[currentOwner];

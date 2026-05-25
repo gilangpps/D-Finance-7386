@@ -11,6 +11,16 @@
  * 6. Copy deployment URL to frontend config
  */
 
+/**
+ * Automatically create custom menu on Spreadsheet open
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("D'Finance")
+    .addItem('Rebuild Dashboard', 'rebuildDashboard')
+    .addToUi();
+}
+
 // ============================================
 // SPREADSHEET CONFIGURATION
 // ============================================
@@ -144,7 +154,8 @@ function doGet(e) {
     }
     
     if (action === 'getStats') {
-      const stats = getCurrentMonthStats();
+      const month = e.parameter.month; // Optional month parameter
+      const stats = getCurrentMonthStats(month);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -619,10 +630,10 @@ function updateRowStatus(owner, entryId, newStatus) {
 // ============================================
 
 /**
- * Calculate current month's stats for Tama and Nana
+ * Calculate total overall stats for Tama and Nana
  */
-function getCurrentMonthStats() {
-  const currentMonthKey = getMonthKey(new Date().toISOString().split('T')[0]);
+function getCurrentMonthStats(monthParam) {
+  const targetMonth = monthParam || getMonthKey(new Date().toISOString().split('T')[0]);
   const stats = {
     Tama: { income: 0, expense: 0, investment: 0 },
     Nana: { income: 0, expense: 0, investment: 0 }
@@ -634,8 +645,9 @@ function getCurrentMonthStats() {
     if (sheet && sheet.getLastRow() > 1) {
       const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
       data.forEach(row => {
-        // month_key is col C (index 2), type is col D (index 3), amount is col G (index 6)
-        if (row[2] === currentMonthKey) {
+        // row[2] is monthKey
+        if (targetMonth === 'All Time' || row[2] === targetMonth) {
+          // type is col D (index 3), amount is col G (index 6)
           const type = (row[3] || '').toString().toLowerCase();
           const amount = parseFloat(row[6]) || 0;
           if (type === 'pemasukan') stats[owner].income += amount;
@@ -656,19 +668,32 @@ function rebuildDashboard() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let dashSheet = ss.getSheetByName(SHEET_NAMES.DASHBOARD);
   
+  let selectedMonth = getMonthKey(new Date().toISOString().split('T')[0]); // Default current month
+  
   if (!dashSheet) {
     dashSheet = ss.insertSheet(SHEET_NAMES.DASHBOARD);
   } else {
+    // Try to preserve the user's selection from B3
+    const cellB3 = dashSheet.getRange("B3").getValue();
+    if (cellB3) {
+      selectedMonth = cellB3;
+    }
+    
     dashSheet.clear(); // Clear all formatting and contents
+    // Also remove existing charts
+    const charts = dashSheet.getCharts();
+    charts.forEach(c => dashSheet.removeChart(c));
   }
   
   const allData = [];
+  const uniqueMonths = new Set();
+  
   ['Tama', 'Nana'].forEach(owner => {
     const sheet = ss.getSheetByName(SHEET_NAMES[owner.toUpperCase()]);
     if (sheet && sheet.getLastRow() > 1) {
       const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
       data.forEach(row => {
-        // [timestamp, date, month_key, type, category, detail, amount, note, image_url, entry_id, sync_status]
+        if (row[2]) uniqueMonths.add(row[2]);
         allData.push({
           owner: owner,
           timestamp: row[0],
@@ -687,104 +712,155 @@ function rebuildDashboard() {
   // Sort all data by timestamp descending
   allData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   
-  // Aggregate data
-  const ownerSummary = {
-    Tama: { income: 0, expense: 0, investment: 0, count: 0 },
-    Nana: { income: 0, expense: 0, investment: 0, count: 0 }
-  };
+  // Create month list for dropdown
+  const monthList = Array.from(uniqueMonths)
+    .map(String)
+    .sort((a, b) => b.localeCompare(a));
+  monthList.unshift('All Time');
+  if (selectedMonth !== 'All Time' && !monthList.includes(selectedMonth)) {
+    monthList.push(selectedMonth);
+  }
   
-  const categorySummary = {};
+  let currentRow = 1;
+  dashSheet.getRange(currentRow, 1).setValue("D'FINANCE 7386 - DASHBOARD").setFontWeight("bold").setFontSize(14);
+  dashSheet.getRange(currentRow + 1, 1).setValue(`Last Updated: ${new Date().toLocaleString('id-ID')}`);
+  
+  // Month Dropdown
+  dashSheet.getRange(currentRow + 2, 1).setValue("Select Month:").setFontWeight("bold");
+  const dropDownCell = dashSheet.getRange(currentRow + 2, 2);
+  const rule = SpreadsheetApp.newDataValidation().requireValueInList(monthList, true).build();
+  dropDownCell.setDataValidation(rule);
+  dropDownCell.setValue(selectedMonth);
+  dropDownCell.setBackground("#fff2cc").setFontWeight("bold");
+  
+  currentRow += 4;
+  
+  const filteredData = selectedMonth === 'All Time' ? allData : allData.filter(tx => tx.monthKey === selectedMonth);
+  
+  // Generate section for each owner
+  ['Tama', 'Nana'].forEach(owner => {
+    // Owner title
+    dashSheet.getRange(currentRow, 1).setValue(`📊 ${owner.toUpperCase()}'S DASHBOARD`).setFontWeight("bold").setFontSize(12).setBackground("#e0e0e0");
+    dashSheet.getRange(currentRow, 1, 1, 6).merge();
+    currentRow += 2;
+    
+    // Aggregate for this owner
+    let income = 0, expense = 0, investment = 0;
+    const catBreakdown = {};
+    
+    filteredData.forEach(tx => {
+      if (tx.owner === owner) {
+        if (tx.type === 'pemasukan') income += tx.amount;
+        else if (tx.type === 'pengeluaran') expense += tx.amount;
+        else if (tx.type === 'investasi') investment += tx.amount;
+        
+        const catKey = `${tx.type}|${tx.category}`;
+        if (!catBreakdown[catKey]) catBreakdown[catKey] = { type: tx.type, category: tx.category, amount: 0 };
+        catBreakdown[catKey].amount += tx.amount;
+      }
+    });
+    
+    // 1. OVERALL SUMMARY
+    dashSheet.getRange(currentRow, 1).setValue("Overall Summary").setFontWeight("bold");
+    currentRow++;
+    
+    const summaryHeaderRange = dashSheet.getRange(currentRow, 1, 1, 2);
+    summaryHeaderRange.setValues([["Type", "Total Amount"]]).setFontWeight("bold").setBackground("#f3f3f3");
+    currentRow++;
+    
+    const summaryStartRow = currentRow;
+    const summaryRows = [
+      ["Pemasukan", income],
+      ["Pengeluaran", expense],
+      ["Investasi", investment]
+    ];
+    dashSheet.getRange(currentRow, 1, 3, 2).setValues(summaryRows);
+    dashSheet.getRange(currentRow, 2, 3, 1).setNumberFormat('Rp #,##0');
+    
+    currentRow += 4;
+    
+    // Add Chart for this summary
+    try {
+      const chartBuilder = dashSheet.newChart()
+        .setChartType(Charts.ChartType.COLUMN)
+        .addRange(dashSheet.getRange(summaryStartRow - 1, 1, 4, 2))
+        .setPosition(summaryStartRow - 2, 4, 0, 0)
+        .setOption('title', `Pemasukan vs Pengeluaran vs Investasi (${owner}) - ${selectedMonth}`)
+        .setOption('width', 450)
+        .setOption('height', 280);
+      dashSheet.insertChart(chartBuilder.build());
+    } catch (e) {
+      Logger.log('Failed to build chart for ' + owner + ': ' + e);
+    }
+    
+    // 2. CATEGORY BREAKDOWN
+    dashSheet.getRange(currentRow, 1).setValue("Category Breakdown").setFontWeight("bold");
+    currentRow++;
+    const catHeaders = ["Type", "Category", "Total Amount"];
+    dashSheet.getRange(currentRow, 1, 1, 3).setValues([catHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+    currentRow++;
+    
+    const catRows = Object.values(catBreakdown)
+      .sort((a, b) => a.type.localeCompare(b.type) || b.amount - a.amount)
+      .map(c => [c.type, c.category, c.amount]);
+      
+    if (catRows.length > 0) {
+      dashSheet.getRange(currentRow, 1, catRows.length, 3).setValues(catRows);
+      dashSheet.getRange(currentRow, 3, catRows.length, 1).setNumberFormat('Rp #,##0');
+      currentRow += catRows.length;
+    } else {
+      dashSheet.getRange(currentRow, 1).setValue("No data");
+      currentRow++;
+    }
+    
+    currentRow += 14; // Leave ample space before next owner section (for the chart height)
+  });
+  
+  // 3. MONTHLY TRENDS (COMBINED - Uses allData to show trends)
+  dashSheet.getRange(currentRow, 1).setValue("📈 COMBINED MONTHLY TRENDS").setFontWeight("bold").setFontSize(12).setBackground("#e0e0e0");
+  dashSheet.getRange(currentRow, 1, 1, 6).merge();
+  currentRow += 2;
+  
   const monthSummary = {};
-  
   allData.forEach(tx => {
-    // Owner Summary
-    ownerSummary[tx.owner].count++;
-    if (tx.type === 'pemasukan') ownerSummary[tx.owner].income += tx.amount;
-    else if (tx.type === 'pengeluaran') ownerSummary[tx.owner].expense += tx.amount;
-    else if (tx.type === 'investasi') ownerSummary[tx.owner].investment += tx.amount;
-    
-    // Category Summary
-    const catKey = `${tx.owner}|${tx.type}|${tx.category}`;
-    if (!categorySummary[catKey]) categorySummary[catKey] = { owner: tx.owner, type: tx.type, category: tx.category, amount: 0 };
-    categorySummary[catKey].amount += tx.amount;
-    
-    // Month Summary
     const monthKey = `${tx.monthKey}|${tx.owner}|${tx.type}`;
     if (!monthSummary[monthKey]) monthSummary[monthKey] = { month: tx.monthKey, owner: tx.owner, type: tx.type, amount: 0 };
     monthSummary[monthKey].amount += tx.amount;
   });
   
-  let currentRow = 1;
-  
-  // Title
-  dashSheet.getRange(currentRow, 1).setValue("D'FINANCE 7386 - DASHBOARD").setFontWeight("bold").setFontSize(14);
-  dashSheet.getRange(currentRow + 1, 1).setValue(`Last Updated: ${new Date().toLocaleString('id-ID')}`);
-  currentRow += 3;
-  
-  // 1. OWNER SUMMARY
-  dashSheet.getRange(currentRow, 1).setValue("OWNER SUMMARY").setFontWeight("bold");
-  currentRow++;
-  const ownerHeaders = ["Owner", "Total Income", "Total Expense", "Total Investment", "Transaction Count"];
-  dashSheet.getRange(currentRow, 1, 1, ownerHeaders.length).setValues([ownerHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
-  currentRow++;
-  
-  const ownerRows = [
-    ["Tama", ownerSummary.Tama.income, ownerSummary.Tama.expense, ownerSummary.Tama.investment, ownerSummary.Tama.count],
-    ["Nana", ownerSummary.Nana.income, ownerSummary.Nana.expense, ownerSummary.Nana.investment, ownerSummary.Nana.count]
-  ];
-  dashSheet.getRange(currentRow, 1, ownerRows.length, ownerRows[0].length).setValues(ownerRows);
-  dashSheet.getRange(currentRow, 2, ownerRows.length, 3).setNumberFormat('Rp #,##0');
-  currentRow += ownerRows.length + 2;
-  
-  // 2. CATEGORY BREAKDOWN
-  dashSheet.getRange(currentRow, 1).setValue("CATEGORY BREAKDOWN").setFontWeight("bold");
-  currentRow++;
-  const catHeaders = ["Owner", "Type", "Category", "Total Amount"];
-  dashSheet.getRange(currentRow, 1, 1, catHeaders.length).setValues([catHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
-  currentRow++;
-  
-  const catRows = Object.values(categorySummary)
-    .sort((a, b) => a.owner.localeCompare(b.owner) || a.type.localeCompare(b.type) || b.amount - a.amount)
-    .map(c => [c.owner, c.type, c.category, c.amount]);
-  
-  if (catRows.length > 0) {
-    dashSheet.getRange(currentRow, 1, catRows.length, catRows[0].length).setValues(catRows);
-    dashSheet.getRange(currentRow, 4, catRows.length, 1).setNumberFormat('Rp #,##0');
-    currentRow += catRows.length;
-  }
-  currentRow += 2;
-  
-  // 3. MONTHLY TRENDS
-  dashSheet.getRange(currentRow, 1).setValue("MONTHLY TRENDS").setFontWeight("bold");
-  currentRow++;
   const monthHeaders = ["Month", "Owner", "Type", "Total Amount"];
-  dashSheet.getRange(currentRow, 1, 1, monthHeaders.length).setValues([monthHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  dashSheet.getRange(currentRow, 1, 1, 4).setValues([monthHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
   currentRow++;
   
   const monthRows = Object.values(monthSummary)
-    .sort((a, b) => b.month.localeCompare(a.month) || a.owner.localeCompare(b.owner) || a.type.localeCompare(b.type))
+    .sort((a, b) => String(b.month).localeCompare(String(a.month)) || String(a.owner).localeCompare(String(b.owner)) || String(a.type).localeCompare(String(b.type)))
     .map(m => [m.month, m.owner, m.type, m.amount]);
     
   if (monthRows.length > 0) {
-    dashSheet.getRange(currentRow, 1, monthRows.length, monthRows[0].length).setValues(monthRows);
+    dashSheet.getRange(currentRow, 1, monthRows.length, 4).setValues(monthRows);
     dashSheet.getRange(currentRow, 4, monthRows.length, 1).setNumberFormat('Rp #,##0');
     currentRow += monthRows.length;
+  } else {
+    dashSheet.getRange(currentRow, 1).setValue("No data");
+    currentRow++;
   }
+  currentRow += 3;
+  
+  // 4. RECENT TRANSACTIONS (Top 20 of selected month)
+  dashSheet.getRange(currentRow, 1).setValue("🕒 RECENT TRANSACTIONS").setFontWeight("bold").setFontSize(12).setBackground("#e0e0e0");
+  dashSheet.getRange(currentRow, 1, 1, 6).merge();
   currentRow += 2;
   
-  // 4. RECENT TRANSACTIONS (Top 20)
-  dashSheet.getRange(currentRow, 1).setValue("RECENT TRANSACTIONS").setFontWeight("bold");
-  currentRow++;
   const recentHeaders = ["Timestamp", "Owner", "Type", "Category", "Detail", "Amount", "Image URL"];
-  dashSheet.getRange(currentRow, 1, 1, recentHeaders.length).setValues([recentHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
+  dashSheet.getRange(currentRow, 1, 1, 7).setValues([recentHeaders]).setFontWeight("bold").setBackground("#f3f3f3");
   currentRow++;
   
-  const recentRows = allData.slice(0, 20).map(tx => [
+  const recentRows = filteredData.slice(0, 20).map(tx => [
     tx.timestamp, tx.owner, tx.type, tx.category, tx.detail, tx.amount, tx.imageUrl
   ]);
   
   if (recentRows.length > 0) {
-    dashSheet.getRange(currentRow, 1, recentRows.length, recentRows[0].length).setValues(recentRows);
+    dashSheet.getRange(currentRow, 1, recentRows.length, 7).setValues(recentRows);
     dashSheet.getRange(currentRow, 6, recentRows.length, 1).setNumberFormat('Rp #,##0');
   }
   
@@ -792,4 +868,18 @@ function rebuildDashboard() {
   dashSheet.autoResizeColumns(1, 7);
   
   Logger.log("Dashboard rebuilt successfully.");
+}
+
+/**
+ * Handle edits in Spreadsheet to trigger Dashboard rebuild when month changes
+ */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  const sheet = e.range.getSheet();
+  if (sheet.getName() === SHEET_NAMES.DASHBOARD) {
+    // If B3 (Select Month) was edited
+    if (e.range.getRow() === 3 && e.range.getColumn() === 2) {
+      rebuildDashboard();
+    }
+  }
 }
