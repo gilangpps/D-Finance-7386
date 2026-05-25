@@ -14,7 +14,7 @@ class BudgetingApp {
 
     async init() {
         try {
-            console.log('🚀 Initializing Bex 7386 Budgeting App...');
+            console.log('🚀 Welcome to D\'Finance | 7386...');
 
             // 1. Initialize theme
             this.theme = new ThemeManager();
@@ -155,5 +155,5 @@ window.debugApp = {
     }
 };
 
-console.log('📱 Bex 7386 Budgeting App v1.0');
+console.log('📱 D\'Finance | 7386 ');
 console.log('💡 Use window.debugApp for debugging');
