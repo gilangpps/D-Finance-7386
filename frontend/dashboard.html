@@ -65,17 +65,31 @@
         let allStats = null;
         let currentOwner = 'Tama';
 
+        /**
+         * Fetch owner-scoped stats from backend
+         * Fetch both Tama and Nana in parallel, store as { Tama:{...}, Nana:{...} }
+         */
         async function fetchDashboardStats() {
             try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=getStats`);
-                const data = await response.json();
-                
-                if (data.success && data.stats) {
-                    allStats = data.stats;
-                    renderStats();
-                }
+                const [tamaRes, nanaRes] = await Promise.all([
+                    fetch(`${APPS_SCRIPT_URL}?action=getStats&owner=Tama`),
+                    fetch(`${APPS_SCRIPT_URL}?action=getStats&owner=Nana`)
+                ]);
+
+                const [tamaData, nanaData] = await Promise.all([
+                    tamaRes.json(),
+                    nanaRes.json()
+                ]);
+
+                // Store as { Tama: {...}, Nana: {...} } structure
+                allStats = {};
+                if (tamaData.success && tamaData.stats) allStats['Tama'] = tamaData.stats;
+                if (nanaData.success && nanaData.stats) allStats['Nana'] = nanaData.stats;
+
+                console.log('✓ Dashboard stats loaded:', allStats);
+                renderStats();
             } catch (e) {
-                console.error(e);
+                console.error('Fetch error:', e);
                 document.getElementById('totalIncome').textContent = "Gagal memuat";
                 document.getElementById('totalExpense').textContent = "Gagal memuat";
                 document.getElementById('totalInvestment').textContent = "Gagal memuat";
@@ -111,12 +125,14 @@
             const monthName = date.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
             document.getElementById('dashboardMonth').textContent = `Periode: ${monthName}`;
             
+            // Check allStats[currentOwner] exists
             if (allStats && allStats[currentOwner]) {
                 const s = allStats[currentOwner];
-                document.getElementById('totalIncome').textContent = formatCurrency(s.income);
-                document.getElementById('totalExpense').textContent = formatCurrency(s.expense);
-                document.getElementById('totalInvestment').textContent = formatCurrency(s.investment);
-            } else if (allStats) {
+                document.getElementById('totalIncome').textContent = formatCurrency(s.income || 0);
+                document.getElementById('totalExpense').textContent = formatCurrency(s.expense || 0);
+                document.getElementById('totalInvestment').textContent = formatCurrency(s.investment || 0);
+            } else {
+                // No data yet or owner not found
                 document.getElementById('totalIncome').textContent = "Rp 0";
                 document.getElementById('totalExpense').textContent = "Rp 0";
                 document.getElementById('totalInvestment').textContent = "Rp 0";
@@ -133,6 +149,7 @@
             selectOwner('Tama');
         }
 
+        // Load stats (auto-select based on URL param)
         fetchDashboardStats();
     </script>
 </body>

@@ -36,9 +36,9 @@ const SHEET_NAMES = {
   DASHBOARD: 'Dashboard'
 };
 
-// Drive folder IDs (populate after setup)
+// Drive folder IDs - ROOT is hardcoded from actual Drive URL
 const DRIVE_FOLDERS = {
-  ROOT: 'Budgeting_7386_Attachments',
+  ROOT_ID: '1GOi-lJyxeXSRu2DUCggI9t0OFWb0tWde', // Budgeting_7386_Attachments
   TAMA: 'Tama',
   NANA: 'Nana'
 };
@@ -88,13 +88,15 @@ function doPost(e) {
     };
     
     // Handle image upload if present
-    if (e.parameter.image) {
+    if (e.parameter.image || e.parameter.image_base64) {
       try {
+        const imagePayload = e.parameter.image_base64 || e.parameter.image;
         const imagePath = uploadImage(
-          e.parameter.image,
+          imagePayload,
           owner,
           transaction.month_key,
-          transaction.entry_id
+          transaction.entry_id,
+          e.parameter.image_name || ''
         );
         transaction.image_url = imagePath;
         Logger.log('Image uploaded: ' + imagePath);
@@ -114,20 +116,30 @@ function doPost(e) {
     
     Logger.log('Transaction saved successfully: ' + transaction.entry_id);
     
-    // Rebuild dashboard
+    // Rebuild dashboard with lock to prevent parallel execution
     try {
-      rebuildDashboard();
+      const props = PropertiesService.getScriptProperties();
+      if (props.getProperty('DASHBOARD_REBUILDING') !== 'true') {
+        props.setProperty('DASHBOARD_REBUILDING', 'true');
+        try {
+          rebuildDashboard();
+        } finally {
+          props.deleteProperty('DASHBOARD_REBUILDING');
+        }
+      }
     } catch (dashError) {
       Logger.log('Error rebuilding dashboard: ' + dashError);
     }
     
     // Fetch updated stats
     const updatedStats = getCurrentMonthStats();
+    const ownerStats = getOwnerMonthStats(owner);
     
     return jsonResponse(true, 'Transaction saved', 200, {
       entry_id: transaction.entry_id,
       timestamp: transaction.timestamp,
-      stats: updatedStats
+      stats: updatedStats,
+      owner_stats: ownerStats
     });
     
   } catch (error) {
@@ -155,7 +167,28 @@ function doGet(e) {
     
     if (action === 'getStats') {
       const month = e.parameter.month; // Optional month parameter
-      const stats = getCurrentMonthStats(month);
+      const owner = e.parameter.owner; // Optional owner parameter
+
+      // Backward compatible:
+      // - if owner is passed, return owner-scoped stats
+      // - otherwise keep returning combined Tama/Nana stats
+      const stats = owner
+        ? getOwnerMonthStats(owner, month)
+        : getCurrentMonthStats(month);
+
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          stats: stats
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+
+    if (action === 'getOwnerStats') {
+      const owner = e.parameter.owner;
+      const month = e.parameter.month;
+      const stats = getOwnerMonthStats(owner, month);
       return ContentService
         .createTextOutput(JSON.stringify({
           success: true,
@@ -270,16 +303,24 @@ function getOwnerSheet(owner) {
 /**
  * Upload image to Google Drive
  */
-function uploadImage(imageBase64, owner, monthKey, entryId) {
+function uploadImage(imageBase64, owner, monthKey, entryId, imageName) {
   try {
-    // Parse base64 string
-    const match = imageBase64.match(/^data:(image\/[a-zA-Z]+);base64,(.*)$/);
-    if (!match) {
+    // Support either full data URL or raw base64 payload
+    let mimeType = 'image/jpeg';
+    let base64Data = imageBase64;
+
+    if (typeof imageBase64 === 'string') {
+      const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+      if (match) {
+        mimeType = match[1];
+        base64Data = match[2];
+      }
+    }
+
+    if (!base64Data || typeof base64Data !== 'string') {
       throw new Error('Invalid image format');
     }
-    
-    const mimeType = match[1];
-    const base64Data = match[2];
+
     const extension = mimeType.split('/')[1] || 'jpg';
     
     // Get or create folder structure
@@ -294,7 +335,10 @@ function uploadImage(imageBase64, owner, monthKey, entryId) {
     const monthFolderId = getOrCreateMonthFolder(ownerFolderId, monthKey);
     
     // Create filename
-    const filename = `${monthKey}_${owner}_${entryId}.${extension}`;
+    const safeName = (imageName || '').toString().trim();
+    const filename = safeName
+      ? `${monthKey}_${owner}_${entryId}_${safeName}`
+      : `${monthKey}_${owner}_${entryId}.${extension}`;
     
     // Upload file
     const folder = DriveApp.getFolderById(monthFolderId);
@@ -315,12 +359,13 @@ function uploadImage(imageBase64, owner, monthKey, entryId) {
 
 /**
  * Get or create Drive folder structure
+ * Uses hardcoded ROOT_ID to avoid ambiguous folder name search across Drive
  */
 function getOrCreateDriveFolders() {
   try {
-    const rootFolder = getOrCreateFolder(null, DRIVE_FOLDERS.ROOT);
-    const tamaFolder = getOrCreateFolder(rootFolder.getId(), DRIVE_FOLDERS.TAMA);
-    const nanaFolder = getOrCreateFolder(rootFolder.getId(), DRIVE_FOLDERS.NANA);
+    const rootFolderId = DRIVE_FOLDERS.ROOT_ID;
+    const tamaFolder = getOrCreateFolder(rootFolderId, DRIVE_FOLDERS.TAMA);
+    const nanaFolder = getOrCreateFolder(rootFolderId, DRIVE_FOLDERS.NANA);
     
     return {
       'Tama': tamaFolder.getId(),
@@ -333,33 +378,16 @@ function getOrCreateDriveFolders() {
 }
 
 /**
- * Get or create a folder
+ * Get or create a folder inside a parent folder (by parent ID)
  */
 function getOrCreateFolder(parentFolderId, folderName) {
   try {
-    let folder;
-    
-    if (parentFolderId === null) {
-      // Root level
-      const roots = DriveApp.getFoldersByName(folderName);
-      if (roots.hasNext()) {
-        folder = roots.next();
-      } else {
-        folder = DriveApp.createFolder(folderName);
-      }
-    } else {
-      // Inside parent folder
-      const parent = DriveApp.getFolderById(parentFolderId);
-      const subfolders = parent.getFoldersByName(folderName);
-      
-      if (subfolders.hasNext()) {
-        folder = subfolders.next();
-      } else {
-        folder = parent.createFolder(folderName);
-      }
+    const parent = DriveApp.getFolderById(parentFolderId);
+    const subfolders = parent.getFoldersByName(folderName);
+    if (subfolders.hasNext()) {
+      return subfolders.next();
     }
-    
-    return folder;
+    return parent.createFolder(folderName);
   } catch (error) {
     Logger.log('Error with folder: ' + error);
     throw error;
@@ -633,7 +661,9 @@ function updateRowStatus(owner, entryId, newStatus) {
  * Calculate total overall stats for Tama and Nana
  */
 function getCurrentMonthStats(monthParam) {
-  const targetMonth = monthParam || getMonthKey(new Date().toISOString().split('T')[0]);
+  // Default to 'All Time' so historical data always visible
+  // Frontend can pass month param to filter specific month
+  const targetMonth = monthParam || 'All Time';
   const stats = {
     Tama: { income: 0, expense: 0, investment: 0 },
     Nana: { income: 0, expense: 0, investment: 0 }
@@ -662,13 +692,43 @@ function getCurrentMonthStats(monthParam) {
 }
 
 /**
+ * Get stats for a single owner
+ * Used by minimum dashboard and owner-scoped stats requests
+ */
+function getOwnerMonthStats(owner, monthParam) {
+  const targetMonth = monthParam || 'All Time';
+  const stats = { income: 0, expense: 0, investment: 0 };
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = getOwnerSheet(owner);
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return stats;
+  }
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+  data.forEach(row => {
+    const computedMonth = row[2] || getMonthKey(row[1]);
+    if (targetMonth === 'All Time' || computedMonth === targetMonth) {
+      const type = (row[3] || '').toString().toLowerCase().trim();
+      const amount = parseFloat(row[6]) || 0;
+      if (type === 'pemasukan') stats.income += amount;
+      else if (type === 'pengeluaran') stats.expense += amount;
+      else if (type === 'investasi') stats.investment += amount;
+    }
+  });
+
+  return stats;
+}
+
+/**
  * Rebuild Dashboard sheet with fresh data
  */
 function rebuildDashboard() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let dashSheet = ss.getSheetByName(SHEET_NAMES.DASHBOARD);
   
-  let selectedMonth = getMonthKey(new Date().toISOString().split('T')[0]); // Default current month
+  let selectedMonth = 'All Time'; // Default must be All Time so historical data appears
   
   if (!dashSheet) {
     dashSheet = ss.insertSheet(SHEET_NAMES.DASHBOARD);
@@ -693,12 +753,13 @@ function rebuildDashboard() {
     if (sheet && sheet.getLastRow() > 1) {
       const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
       data.forEach(row => {
-        if (row[2]) uniqueMonths.add(row[2]);
+        const computedMonth = row[2] || getMonthKey(row[1]);
+        if (computedMonth) uniqueMonths.add(computedMonth);
         allData.push({
           owner: owner,
           timestamp: row[0],
           date: row[1],
-          monthKey: row[2],
+          monthKey: computedMonth,
           type: (row[3] || '').toString().toLowerCase(),
           category: row[4],
           detail: row[5],
@@ -816,13 +877,16 @@ function rebuildDashboard() {
     currentRow += 14; // Leave ample space before next owner section (for the chart height)
   });
   
-  // 3. MONTHLY TRENDS (COMBINED - Uses allData to show trends)
+  // 3. MONTHLY TRENDS
+  // If All Time: show all months aggregated. If specific month: show that month only.
   dashSheet.getRange(currentRow, 1).setValue("📈 COMBINED MONTHLY TRENDS").setFontWeight("bold").setFontSize(12).setBackground("#e0e0e0");
   dashSheet.getRange(currentRow, 1, 1, 6).merge();
   currentRow += 2;
   
   const monthSummary = {};
-  allData.forEach(tx => {
+  // Use filteredData so trends respect the dropdown filter
+  const trendsSource = selectedMonth === 'All Time' ? allData : filteredData;
+  trendsSource.forEach(tx => {
     const monthKey = `${tx.monthKey}|${tx.owner}|${tx.type}`;
     if (!monthSummary[monthKey]) monthSummary[monthKey] = { month: tx.monthKey, owner: tx.owner, type: tx.type, amount: 0 };
     monthSummary[monthKey].amount += tx.amount;
@@ -879,7 +943,14 @@ function onEdit(e) {
   if (sheet.getName() === SHEET_NAMES.DASHBOARD) {
     // If B3 (Select Month) was edited
     if (e.range.getRow() === 3 && e.range.getColumn() === 2) {
-      rebuildDashboard();
+      const props = PropertiesService.getScriptProperties();
+      if (props.getProperty('DASHBOARD_REBUILDING') === 'true') return;
+      try {
+        props.setProperty('DASHBOARD_REBUILDING', 'true');
+        rebuildDashboard();
+      } finally {
+        props.deleteProperty('DASHBOARD_REBUILDING');
+      }
     }
   }
 }

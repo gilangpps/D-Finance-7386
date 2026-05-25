@@ -9,7 +9,7 @@ class BudgetingApp {
         this.theme = null;
         this.formHandler = null;
         this.stats = null;
-        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec'; // Will be provided in config or env
+        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec';
     }
 
     async init() {
@@ -31,7 +31,6 @@ class BudgetingApp {
             console.log('✓ Form handler initialized');
 
             // 4. Set Apps Script URL
-            // This should come from your deployment or a configuration
             this.appsScriptUrl = this.getAppsScriptUrl();
             if (this.appsScriptUrl) {
                 this.formHandler.setAppsScriptUrl(this.appsScriptUrl);
@@ -64,7 +63,7 @@ class BudgetingApp {
 
     /**
      * Get Apps Script URL
-     * Priority: environment variable > localStorage > prompt user
+     * Priority: hardcoded > environment variable > localStorage > prompt user
      */
     getAppsScriptUrl() {
         // Return the hardcoded URL if already set in the constructor
@@ -119,27 +118,31 @@ class BudgetingApp {
 
     /**
      * Fetch stats for the minimum dashboard
-     * Fetches both owners independently → stored as { Tama:{...}, Nana:{...} }
-     * so updateStatsUI(owner) can read the right slice
+     * Fetches both Tama and Nana owner-scoped stats independently
+     * so updateStatsUI() can show the right data per selected owner
      */
     async fetchStats() {
         if (!this.appsScriptUrl) return;
         try {
+            // Fetch both owners in parallel
             const [tamaRes, nanaRes] = await Promise.all([
                 fetch(`${this.appsScriptUrl}?action=getStats&owner=Tama`),
                 fetch(`${this.appsScriptUrl}?action=getStats&owner=Nana`)
             ]);
+
             const [tamaData, nanaData] = await Promise.all([
                 tamaRes.json(),
                 nanaRes.json()
             ]);
 
+            // Store as { Tama: {...}, Nana: {...} } so updateStatsUI(owner) works
             this.stats = {};
             if (tamaData.success && tamaData.stats) this.stats['Tama'] = tamaData.stats;
             if (nanaData.success && nanaData.stats) this.stats['Nana'] = nanaData.stats;
 
             console.log('✓ Stats loaded', this.stats);
 
+            // If owner already selected, refresh the UI immediately
             if (this.formHandler && this.formHandler.selectedOwner) {
                 this.formHandler.updateStatsUI(this.formHandler.selectedOwner);
             }
@@ -149,13 +152,13 @@ class BudgetingApp {
     }
 
     /**
-     * Refresh a single owner's stats after new transaction
+     * Refresh stats for a specific owner (call after successful transaction submit)
      */
     async refreshOwnerStats(owner) {
         if (!this.appsScriptUrl || !owner) return;
         try {
-            const res = await fetch(`${this.appsScriptUrl}?action=getStats&owner=${owner}`);
-            const data = await res.json();
+            const response = await fetch(`${this.appsScriptUrl}?action=getStats&owner=${owner}`);
+            const data = await response.json();
             if (data.success && data.stats) {
                 if (!this.stats) this.stats = {};
                 this.stats[owner] = data.stats;
@@ -163,8 +166,8 @@ class BudgetingApp {
                     this.formHandler.updateStatsUI(owner);
                 }
             }
-        } catch (e) {
-            console.error('Failed to refresh stats:', e);
+        } catch (error) {
+            console.error('Failed to refresh owner stats:', error);
         }
     }
 }

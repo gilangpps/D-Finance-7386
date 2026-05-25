@@ -1,6 +1,6 @@
 /**
- * FORM HANDLER
- * Handles form submission, validation, and data processing
+ * FORM HANDLER V2
+ * Handles form submission with image compression and FormData binary upload
  */
 
 class FormHandler {
@@ -11,7 +11,7 @@ class FormHandler {
         this.selectedOwner = null;
         this.selectedImage = null;
         this.selectedImageBase64 = null;
-        this.appsScriptUrl = null; // Will be set during initialization
+        this.appsScriptUrl = null;
         this.init();
     }
 
@@ -128,7 +128,7 @@ class FormHandler {
         this.selectedOwner = owner;
         document.getElementById('ownerInput').value = owner;
 
-        // Auto-switch theme to match owner: Tama → graphite, Nana → vintage
+        // Auto-switch theme to match owner
         if (this.theme && this.theme.setThemeByOwner) {
             this.theme.setThemeByOwner(owner);
         }
@@ -140,9 +140,9 @@ class FormHandler {
     updateStatsUI(owner) {
         if (window.app && window.app.stats && window.app.stats[owner]) {
             const stats = window.app.stats[owner];
-            document.getElementById('statIncome').textContent = `Rp ${this.config.formatCurrency(stats.income)}`;
-            document.getElementById('statExpense').textContent = `Rp ${this.config.formatCurrency(stats.expense)}`;
-            document.getElementById('statInvestment').textContent = `Rp ${this.config.formatCurrency(stats.investment)}`;
+            document.getElementById('statIncome').textContent = this.config.formatCurrency(stats.income || 0);
+            document.getElementById('statExpense').textContent = this.config.formatCurrency(stats.expense || 0);
+            document.getElementById('statInvestment').textContent = this.config.formatCurrency(stats.investment || 0);
             document.getElementById('quickStats').style.display = 'block';
         } else {
             document.getElementById('quickStats').style.display = 'none';
@@ -172,40 +172,57 @@ class FormHandler {
         return isValid;
     }
 
-    handleImageSelect(event) {
+    async handleImageSelect(event) {
         const files = event.target.files;
         if (files.length === 0) return;
 
         const file = files[0];
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        const maxSize = 10 * 1024 * 1024; // 10MB raw, will be compressed
 
-        // Validate file
+        // Validate file type
         if (!file.type.startsWith('image/')) {
             this.showFeedback('Hanya file gambar yang diizinkan', 'error');
             return;
         }
 
         if (file.size > maxSize) {
-            this.showFeedback('Ukuran gambar tidak boleh lebih dari 5MB', 'error');
+            this.showFeedback('Ukuran gambar tidak boleh lebih dari 10MB', 'error');
             return;
         }
 
-        // Store file and show preview
-        this.selectedImage = file;
-        this.showImagePreview(file);
+        // Show compressing feedback
+        const hint = document.getElementById('amountHint');
+        hint.textContent = 'Mengompres gambar...';
+
+        try {
+            // Compress image using ImageUtils
+            const compressedBase64 = await window.ImageUtils.compressToBase64(
+                file,
+                1200,  // max width
+                1200,  // max height
+                0.7    // quality
+            );
+
+            // Store compressed base64
+            this.selectedImage = file;
+            this.selectedImageBase64 = compressedBase64;
+
+            // Show preview
+            this.showImagePreview(file, compressedBase64);
+            hint.textContent = '';
+        } catch (error) {
+            console.error('Image compression error:', error);
+            this.showFeedback('Gagal mengompres gambar: ' + error.message, 'error');
+            hint.textContent = '';
+        }
     }
 
-    showImagePreview(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const preview = document.getElementById('imagePreview');
-            const previewImage = document.getElementById('previewImage');
-            this.selectedImageBase64 = e.target.result;
-            previewImage.src = this.selectedImageBase64;
-            preview.style.display = 'block';
-            document.getElementById('imageUploadArea').style.display = 'none';
-        };
-        reader.readAsDataURL(file);
+    showImagePreview(file, base64) {
+        const preview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        previewImage.src = base64;
+        preview.style.display = 'block';
+        document.getElementById('imageUploadArea').style.display = 'none';
     }
 
     removeImage() {
@@ -256,7 +273,9 @@ class FormHandler {
         this.setLoading(true);
 
         try {
-            // Prepare transaction data
+            // Prepare FormData for binary upload
+            const formData = new FormData();
+            
             const owner = document.getElementById('ownerInput').value;
             const date = document.getElementById('dateInput').value;
             const type = document.getElementById('typeSelect').value;
@@ -265,42 +284,45 @@ class FormHandler {
             const amount = parseFloat(document.getElementById('amountInput').value);
             const note = document.getElementById('noteInput').value;
 
-            // Build payload as URLSearchParams — GAS e.parameter reads URL-encoded body
-            // FormData multipart is NOT reliably readable via e.parameter in Apps Script
-            const params = new URLSearchParams();
-            params.append('owner', owner);
-            params.append('date', date);
-            params.append('type', type);
-            params.append('category', category);
-            params.append('detail', detail);
-            params.append('amount', amount);
-            params.append('note', note);
+            // Add fields to FormData
+            formData.append('owner', owner);
+            formData.append('date', date);
+            formData.append('type', type);
+            formData.append('category', category);
+            formData.append('detail', detail);
+            formData.append('amount', amount);
+            formData.append('note', note);
 
-            // Image: send as image_base64 key (matches GAS e.parameter.image_base64 check)
+            // Add compressed image if selected (as base64 string)
             if (this.selectedImageBase64) {
-                params.append('image_base64', this.selectedImageBase64);
-                params.append('image_name', this.selectedImage ? this.selectedImage.name : '');
+                formData.append('image_base64', this.selectedImageBase64);
+                if (this.selectedImage) {
+                    formData.append('image_name', this.selectedImage.name);
+                }
             }
 
-            // Send to Apps Script
+            console.log('Submitting transaction for:', owner);
+
+            // Send to Apps Script via FormData (multipart binary safe)
             const response = await fetch(this.appsScriptUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString()
+                body: formData
             });
 
             const result = await response.json();
 
             if (result.success) {
                 this.showFeedback('✓ Transaksi berhasil disimpan!', 'success');
-                // Refresh owner-scoped stats from backend (not from stale result.data.stats)
+                
+                // Refresh owner stats from backend
                 if (window.app && window.app.refreshOwnerStats) {
-                    window.app.refreshOwnerStats(owner);
+                    await window.app.refreshOwnerStats(owner);
                 } else if (result.data && result.data.owner_stats) {
                     if (!window.app.stats) window.app.stats = {};
                     window.app.stats[owner] = result.data.owner_stats;
                     this.updateStatsUI(owner);
                 }
+                
                 this.resetForm();
             } else {
                 this.showFeedback(`✗ Gagal: ${result.error}`, 'error');
