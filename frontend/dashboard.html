@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Minimum - D'Finance 7386</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/themes.css">
+</head>
+<body class="theme-tama">
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">Dashboard D'Finance</h1>
+                <p class="app-subtitle">Personal Minimum Dashboard</p>
+                <div class="header-actions" style="margin-top: 0.75rem;">
+                    <a href="index.html" class="btn" style="background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); font-size: 0.875rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; text-decoration: none;">
+                        ⬅ Kembali ke Form
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main class="app-main" style="flex-direction: column; align-items: center;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-primary);">Pilih Pemilik</h2>
+                <div class="owner-selector" style="display: flex; gap: 1rem; justify-content: center; max-width: 400px; margin: 0 auto;">
+                    <button class="owner-btn active" id="btnTama" onclick="selectOwner('Tama')">
+                        <span class="owner-icon">👨🏻</span>
+                        <span class="owner-name">Tama</span>
+                    </button>
+                    <button class="owner-btn" id="btnNana" onclick="selectOwner('Nana')">
+                        <span class="owner-icon">👩🏻</span>
+                        <span class="owner-name">Nana</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="quick-stats" id="dashboardStats" style="width: 100%; max-width: 600px; position: static;">
+                <h3 class="stats-title" style="text-align: center; font-size: 1.5rem; margin-bottom: 1.5rem;" id="dashboardOwnerTitle">Total Keseluruhan (Tama)</h3>
+                <div class="stats-grid">
+                    <div class="stat-item" style="padding: 1.5rem;">
+                        <span class="stat-label">Total Pemasukan</span>
+                        <span class="stat-value stat-income" id="totalIncome">Memuat...</span>
+                    </div>
+                    <div class="stat-item" style="padding: 1.5rem;">
+                        <span class="stat-label">Total Pengeluaran</span>
+                        <span class="stat-value stat-expense" id="totalExpense">Memuat...</span>
+                    </div>
+                    <div class="stat-item" style="padding: 1.5rem;">
+                        <span class="stat-label">Total Investasi</span>
+                        <span class="stat-value stat-investment" id="totalInvestment">Memuat...</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="app-footer">
+            <p class="footer-text">Our tale, ich liebe dich</p>
+        </footer>
+    </div>
+
+    <script src="js/config-loader.js"></script>
+    <script>
+        let allStats = null;
+        let currentOwner = 'Tama';
+
+        async function fetchDashboardStats() {
+            try {
+                const configLoader = new ConfigLoader();
+                await configLoader.load();
+                
+                const response = await fetch(`${configLoader.config.appsScriptUrl}?action=getStats`);
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    allStats = data.stats;
+                    renderStats();
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('totalIncome').textContent = "Gagal memuat";
+                document.getElementById('totalExpense').textContent = "Gagal memuat";
+                document.getElementById('totalInvestment').textContent = "Gagal memuat";
+            }
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function selectOwner(owner) {
+            currentOwner = owner;
+            document.body.className = `theme-${owner.toLowerCase()}`;
+            
+            document.getElementById('btnTama').classList.toggle('active', owner === 'Tama');
+            document.getElementById('btnNana').classList.toggle('active', owner === 'Nana');
+            
+            renderStats();
+        }
+
+        function renderStats() {
+            document.getElementById('dashboardOwnerTitle').textContent = `Total Keseluruhan (${currentOwner})`;
+            
+            if (allStats && allStats[currentOwner]) {
+                const s = allStats[currentOwner];
+                document.getElementById('totalIncome').textContent = formatCurrency(s.income);
+                document.getElementById('totalExpense').textContent = formatCurrency(s.expense);
+                document.getElementById('totalInvestment').textContent = formatCurrency(s.investment);
+            } else if (allStats) {
+                document.getElementById('totalIncome').textContent = "Rp 0";
+                document.getElementById('totalExpense').textContent = "Rp 0";
+                document.getElementById('totalInvestment').textContent = "Rp 0";
+            }
+        }
+        
+        // Parse URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const ownerParam = urlParams.get('owner');
+        if (ownerParam && (ownerParam === 'Tama' || ownerParam === 'Nana')) {
+            currentOwner = ownerParam;
+            selectOwner(currentOwner);
+        } else {
+            selectOwner('Tama');
+        }
+
+        fetchDashboardStats();
+    </script>
+</body>
+</html>

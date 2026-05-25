@@ -45,10 +45,14 @@ class BudgetingApp {
             // 5. Setup theme change listener
             window.addEventListener('themeChanged', (e) => {
                 console.log('Theme changed to:', e.detail.theme);
+                
+                // Update dashboard link dynamically based on theme change
+                const link = document.getElementById('btnLinkDashboard');
+                if (link && e.detail.theme.startsWith('theme-')) {
+                    const owner = e.detail.theme.replace('theme-', '');
+                    link.href = `dashboard.html?owner=${owner.charAt(0).toUpperCase() + owner.slice(1)}`;
+                }
             });
-
-            // 6. Setup Modal
-            this.setupDashboardModal();
 
             console.log('✅ App initialized successfully!');
 
@@ -111,48 +115,6 @@ class BudgetingApp {
         feedback.className = 'form-feedback error';
         feedback.textContent = '❌ ' + message;
         feedback.style.display = 'block';
-    }
-
-    /**
-     * Set up Dashboard Modal behavior
-     */
-    setupDashboardModal() {
-        const btnShow = document.getElementById('btnShowDashboard');
-        const btnClose = document.getElementById('btnCloseDashboard');
-        const modal = document.getElementById('dashboardModal');
-
-        if (btnShow && btnClose && modal) {
-            btnShow.addEventListener('click', (e) => {
-                e.preventDefault();
-                const owner = this.formHandler ? this.formHandler.selectedOwner : null;
-                if (!owner) {
-                    alert('Silakan pilih pemilik (Tama/Nana) pada form terlebih dahulu untuk melihat dashboard personal Anda.');
-                    return;
-                }
-                
-                // Update modal data
-                document.getElementById('modalOwnerName').textContent = owner;
-                if (this.stats && this.stats[owner]) {
-                    const stats = this.stats[owner];
-                    document.getElementById('modalStatIncome').textContent = `Rp ${this.config.formatCurrency(stats.income)}`;
-                    document.getElementById('modalStatExpense').textContent = `Rp ${this.config.formatCurrency(stats.expense)}`;
-                    document.getElementById('modalStatInvestment').textContent = `Rp ${this.config.formatCurrency(stats.investment)}`;
-                }
-                
-                modal.classList.add('active');
-            });
-
-            btnClose.addEventListener('click', () => {
-                modal.classList.remove('active');
-            });
-
-            // Close on click outside
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                }
-            });
-        }
     }
 
     /**
