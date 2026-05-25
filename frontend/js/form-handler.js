@@ -271,11 +271,7 @@ class FormHandler {
 
         // Show loading state
         this.setLoading(true);
-
         try {
-            // Prepare FormData for binary upload
-            const formData = new FormData();
-            
             const owner = document.getElementById('ownerInput').value;
             const date = document.getElementById('dateInput').value;
             const type = document.getElementById('typeSelect').value;
@@ -284,29 +280,20 @@ class FormHandler {
             const amount = parseFloat(document.getElementById('amountInput').value);
             const note = document.getElementById('noteInput').value;
 
-            // Add fields to FormData
-            formData.append('owner', owner);
-            formData.append('date', date);
-            formData.append('type', type);
-            formData.append('category', category);
-            formData.append('detail', detail);
-            formData.append('amount', amount);
-            formData.append('note', note);
-
-            // Add compressed image if selected (as base64 string)
+            // JSON payload — GAS reads via JSON.parse(e.postData.contents)
+            const payload = { owner, date, type, category, detail, amount, note };
             if (this.selectedImageBase64) {
-                formData.append('image_base64', this.selectedImageBase64);
-                if (this.selectedImage) {
-                    formData.append('image_name', this.selectedImage.name);
-                }
+                payload.image_base64 = this.selectedImageBase64;
+                payload.image_name = this.selectedImage ? this.selectedImage.name : '';
             }
 
             console.log('Submitting transaction for:', owner);
 
-            // Send to Apps Script via FormData (multipart binary safe)
+            // Content-Type text/plain avoids CORS preflight on GAS
             const response = await fetch(this.appsScriptUrl, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();

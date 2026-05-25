@@ -53,15 +53,28 @@ const DRIVE_FOLDERS = {
 function doPost(e) {
   try {
     Logger.log('Received POST request');
-    
-    // Parse request parameters
-    const owner = e.parameter.owner || e.postData.getParameter('owner');
-    const date = e.parameter.date || e.postData.getParameter('date');
-    const type = e.parameter.type || e.postData.getParameter('type');
-    const category = e.parameter.category || e.postData.getParameter('category');
-    const detail = e.parameter.detail || e.postData.getParameter('detail');
-    const amount = e.parameter.amount || e.postData.getParameter('amount');
-    const note = e.parameter.note || e.postData.getParameter('note');
+
+    // Parse params: try JSON body first (frontend sends text/plain JSON),
+    // fallback to e.parameter (form-encoded)
+    let params = {};
+    try {
+      if (e.postData && e.postData.contents) {
+        params = JSON.parse(e.postData.contents);
+        Logger.log('Parsed JSON body successfully');
+      }
+    } catch (parseError) {
+      Logger.log('JSON parse failed, fallback to e.parameter: ' + parseError);
+    }
+
+    const owner    = params.owner    || e.parameter.owner    || '';
+    const date     = params.date     || e.parameter.date     || '';
+    const type     = params.type     || e.parameter.type     || '';
+    const category = params.category || e.parameter.category || '';
+    const detail   = params.detail   || e.parameter.detail   || '';
+    const amount   = params.amount   || e.parameter.amount   || '';
+    const note     = params.note     || e.parameter.note     || '';
+
+    Logger.log('owner=' + owner + ' date=' + date + ' type=' + type + ' amount=' + amount);
     
     // Validate required fields
     const validation = validateTransaction({
@@ -88,15 +101,17 @@ function doPost(e) {
     };
     
     // Handle image upload if present
-    if (e.parameter.image || e.parameter.image_base64) {
+    // image_base64 comes from JSON body (params) or fallback e.parameter
+    const imageBase64 = params.image_base64 || e.parameter.image_base64 || '';
+    const imageName   = params.image_name   || e.parameter.image_name   || '';
+    if (imageBase64) {
       try {
-        const imagePayload = e.parameter.image_base64 || e.parameter.image;
         const imagePath = uploadImage(
-          imagePayload,
+          imageBase64,
           owner,
           transaction.month_key,
           transaction.entry_id,
-          e.parameter.image_name || ''
+          imageName
         );
         transaction.image_url = imagePath;
         Logger.log('Image uploaded: ' + imagePath);
