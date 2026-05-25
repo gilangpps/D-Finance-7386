@@ -21,9 +21,9 @@
                 <h1 class="app-title">D'Finance | 7386</h1>
                 <p class="app-subtitle">Our more serious financial plan for more uplifting tale.</p>
                 <div class="header-actions" style="margin-top: 0.75rem;">
-                    <a href="https://docs.google.com/spreadsheets/d/1pE9kBBjooUlYmyWJm0nSDtXXB6PvSKB7_aXd6PvGAhU/edit" target="_blank" class="btn" style="background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); font-size: 0.875rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; text-decoration: none;">
-                        📊 Lihat Dashboard
-                    </a>
+                    <button type="button" id="btnShowDashboard" class="btn" style="background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color); font-size: 0.875rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; cursor: pointer;">
+                        📊 Lihat Dashboard Minimum
+                    </button>
                 </div>
             </div>
             <button class="theme-switcher" id="themeSwitcher" title="Ganti tema">
@@ -199,6 +199,29 @@
         <footer class="app-footer">
             <p class="footer-text">Our tale, ich liebe dich</p>
         </footer>
+
+        <!-- Dashboard Modal -->
+        <div id="dashboardModal" class="dashboard-modal">
+            <div class="dashboard-modal-content">
+                <button class="btn-close-modal" id="btnCloseDashboard">✕</button>
+                <h2 class="modal-title">Dashboard <span id="modalOwnerName"></span></h2>
+                <p class="modal-subtitle">Statistik Bulan Ini</p>
+                <div class="stats-grid modal-stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Pemasukan</span>
+                        <span class="stat-value stat-income" id="modalStatIncome">Rp 0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Pengeluaran</span>
+                        <span class="stat-value stat-expense" id="modalStatExpense">Rp 0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Investasi</span>
+                        <span class="stat-value stat-investment" id="modalStatInvestment">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
