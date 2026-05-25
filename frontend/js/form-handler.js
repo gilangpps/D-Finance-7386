@@ -256,10 +256,7 @@ class FormHandler {
         this.setLoading(true);
 
         try {
-            // Prepare form data
-            const formData = new FormData();
-            
-            // Basic transaction data
+            // Prepare transaction data
             const owner = document.getElementById('ownerInput').value;
             const date = document.getElementById('dateInput').value;
             const type = document.getElementById('typeSelect').value;
@@ -268,32 +265,41 @@ class FormHandler {
             const amount = parseFloat(document.getElementById('amountInput').value);
             const note = document.getElementById('noteInput').value;
 
-            // Add fields to FormData
-            formData.append('owner', owner);
-            formData.append('date', date);
-            formData.append('type', type);
-            formData.append('category', category);
-            formData.append('detail', detail);
-            formData.append('amount', amount);
-            formData.append('note', note);
+            // Build payload as URLSearchParams — GAS e.parameter reads URL-encoded body
+            // FormData multipart is NOT reliably readable via e.parameter in Apps Script
+            const params = new URLSearchParams();
+            params.append('owner', owner);
+            params.append('date', date);
+            params.append('type', type);
+            params.append('category', category);
+            params.append('detail', detail);
+            params.append('amount', amount);
+            params.append('note', note);
 
-            // Add image if selected
+            // Image: send as image_base64 key (matches GAS e.parameter.image_base64 check)
             if (this.selectedImageBase64) {
-                formData.append('image', this.selectedImageBase64);
+                params.append('image_base64', this.selectedImageBase64);
+                params.append('image_name', this.selectedImage ? this.selectedImage.name : '');
             }
 
             // Send to Apps Script
             const response = await fetch(this.appsScriptUrl, {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
             });
 
             const result = await response.json();
 
             if (result.success) {
                 this.showFeedback('✓ Transaksi berhasil disimpan!', 'success');
-                if (result.data && result.data.stats) {
-                    window.app.stats = result.data.stats;
+                // Refresh owner-scoped stats from backend (not from stale result.data.stats)
+                if (window.app && window.app.refreshOwnerStats) {
+                    window.app.refreshOwnerStats(owner);
+                } else if (result.data && result.data.owner_stats) {
+                    if (!window.app.stats) window.app.stats = {};
+                    window.app.stats[owner] = result.data.owner_stats;
+                    this.updateStatsUI(owner);
                 }
                 this.resetForm();
             } else {

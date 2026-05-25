@@ -119,21 +119,52 @@ class BudgetingApp {
 
     /**
      * Fetch stats for the minimum dashboard
+     * Fetches both owners independently → stored as { Tama:{...}, Nana:{...} }
+     * so updateStatsUI(owner) can read the right slice
      */
     async fetchStats() {
         if (!this.appsScriptUrl) return;
         try {
-            const response = await fetch(`${this.appsScriptUrl}?action=getStats`);
-            const result = await response.json();
-            if (result.success && result.stats) {
-                this.stats = result.stats;
-                console.log('✓ Stats loaded');
-                if (this.formHandler && this.formHandler.selectedOwner) {
-                    this.formHandler.updateStatsUI(this.formHandler.selectedOwner);
-                }
+            const [tamaRes, nanaRes] = await Promise.all([
+                fetch(`${this.appsScriptUrl}?action=getStats&owner=Tama`),
+                fetch(`${this.appsScriptUrl}?action=getStats&owner=Nana`)
+            ]);
+            const [tamaData, nanaData] = await Promise.all([
+                tamaRes.json(),
+                nanaRes.json()
+            ]);
+
+            this.stats = {};
+            if (tamaData.success && tamaData.stats) this.stats['Tama'] = tamaData.stats;
+            if (nanaData.success && nanaData.stats) this.stats['Nana'] = nanaData.stats;
+
+            console.log('✓ Stats loaded', this.stats);
+
+            if (this.formHandler && this.formHandler.selectedOwner) {
+                this.formHandler.updateStatsUI(this.formHandler.selectedOwner);
             }
         } catch (error) {
             console.error('Failed to fetch stats:', error);
+        }
+    }
+
+    /**
+     * Refresh a single owner's stats after new transaction
+     */
+    async refreshOwnerStats(owner) {
+        if (!this.appsScriptUrl || !owner) return;
+        try {
+            const res = await fetch(`${this.appsScriptUrl}?action=getStats&owner=${owner}`);
+            const data = await res.json();
+            if (data.success && data.stats) {
+                if (!this.stats) this.stats = {};
+                this.stats[owner] = data.stats;
+                if (this.formHandler && this.formHandler.selectedOwner === owner) {
+                    this.formHandler.updateStatsUI(owner);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to refresh stats:', e);
         }
     }
 }
