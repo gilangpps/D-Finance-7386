@@ -9,7 +9,7 @@ class BudgetingApp {
         this.theme = null;
         this.formHandler = null;
         this.stats = null;
-        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz-ZD9NEUQsCjMRz-9q4ahiVOUrb4tHET0XsEoPFC6emY-LQ_qFGBbL3QrKPsUYg9aR/exec';
+        this.appsScriptUrl = 'https://script.google.com/macros/s/AKfycbyiPursjkgo3g7KHlo9qz3GFhqk_lqOIdPQjzHJ-9nSeDFL_f1SpnB4JVQh5H2pqVs/exec';
     }
 
     async init() {
